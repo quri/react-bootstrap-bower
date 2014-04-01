@@ -19,12 +19,14 @@ define(
 
       propTypes: {
         animation: React.PropTypes.bool,
+        panel: React.PropTypes.bool,
         onSelect: React.PropTypes.func
       },
 
       getDefaultProps: function () {
         return {
-          animation: true
+          animation: true,
+          panel: false
         };
       },
 
@@ -62,9 +64,11 @@ define(
           this.props.activeKey != null ? this.props.activeKey : this.state.activeKey;
 
         return this.transferPropsTo(
-          React.DOM.div(null, 
-            Nav( {bsStyle:"tabs", activeKey:activeKey, onSelect:this.handleSelect, ref:"tabs"}, 
-              utils.modifyChildren(utils.filterChildren(this.props.children, hasTab), this.renderTab)
+          React.DOM.div( {className:"panel"}, 
+            React.DOM.div( {className:"panel-heading"}, 
+              Nav( {bsStyle:this.props.panel ? '' : 'tabs', activeKey:activeKey, onSelect:this.handleSelect, ref:"tabs", panel:this.props.panel}, 
+                utils.modifyChildren(utils.filterChildren(this.props.children, hasTab), this.renderTab)
+              )
             ),
             React.DOM.div( {id:this.props.id, className:"tab-content", ref:"panes"}, 
               utils.modifyChildren(this.props.children, this.renderPane)
