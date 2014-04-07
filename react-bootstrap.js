@@ -3628,12 +3628,14 @@ define(
         var activeKey =
           this.props.activeKey != null ? this.props.activeKey : this.state.activeKey;
 
-        return this.transferPropsTo(
+        return (
           React.DOM.div( {className:"panel"}, 
             React.DOM.div( {className:"panel-heading"}, 
-              Nav( {bsStyle:this.props.panel ? '' : 'tabs', activeKey:activeKey, onSelect:this.handleSelect, ref:"tabs", panel:this.props.panel}, 
-                utils.modifyChildren(utils.filterChildren(this.props.children, hasTab), this.renderTab)
-              )
+              " this.transferPropsTo( ",
+                Nav( {bsStyle:this.props.panel ? '' : 'tabs', activeKey:activeKey, onSelect:this.handleSelect, ref:"tabs", panel:this.props.panel}, 
+                  utils.modifyChildren(utils.filterChildren(this.props.children, hasTab), this.renderTab)
+                ),
+              " ); "
             ),
             React.DOM.div( {id:this.props.id, className:"tab-content", ref:"panes"}, 
               utils.modifyChildren(this.props.children, this.renderPane)
