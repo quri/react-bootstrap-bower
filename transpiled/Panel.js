@@ -206,8 +206,15 @@ define(
 
       renderCollapsableTitle: function (header) {
         return (
-          React.DOM.h4( {className:"panel-title"}, 
-            this.renderAnchor(header)
+          React.DOM.a(
+            {href:'#' + (this.props.id || ''),
+            className:this.isOpen() ? null : 'collapsed',
+            onClick:this.handleSelect}, 
+            React.DOM.div( {className:"accordion-toggle-icon"}, 
+              React.DOM.i( {className:"fa fa-minus-square-o"} ),
+              React.DOM.i( {className:"fa fa-plus-square-o"} )
+            ),
+            header
           )
         );
       },

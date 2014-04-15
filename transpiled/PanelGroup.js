@@ -31,8 +31,12 @@ define(
       },
 
       render: function () {
+        classes = this.getBsClassSet();
+        classes['accordion'] = this.props.isAccordion;
+        classes['accordion-alt'] = this.props.isAccordion;
+
         return this.transferPropsTo(
-          React.DOM.div( {className:classSet(this.getBsClassSet())}, 
+          React.DOM.div( {className:classSet(classes)}, 
               utils.modifyChildren(this.props.children, this.renderPanel)
           )
         );
