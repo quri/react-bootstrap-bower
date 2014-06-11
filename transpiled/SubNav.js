@@ -19,7 +19,7 @@ define(
         disabled: React.PropTypes.bool,
         href: React.PropTypes.string,
         title: React.PropTypes.string,
-        text: React.PropTypes.renderable,
+        text: React.PropTypes.renderable
       },
 
       getDefaultProps: function () {
@@ -119,7 +119,7 @@ define(
           child,
           {
             active: this.getChildActiveProp(child),
-            onSelect: utils.createChainedFunction(child.onSelect, this.props.onSelect),
+            onSelect: utils.createChainedFunction(child.props.onSelect, this.props.onSelect),
             ref: child.props.ref,
             key: child.props.key
           }
