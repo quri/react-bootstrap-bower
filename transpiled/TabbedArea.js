@@ -1,6 +1,6 @@
 define(
-  ["./react-es6","./BootstrapMixin","./utils","./Nav","./NavItem","exports"],
-  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __dependency5__, __exports__) {
+  ["./react-es6","./BootstrapMixin","./utils","./Nav","./NavItem","./ValidComponentChildren","exports"],
+  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __dependency5__, __dependency6__, __exports__) {
     "use strict";
     /** @jsx React.DOM */
 
@@ -9,9 +9,18 @@ define(
     var utils = __dependency3__["default"];
     var Nav = __dependency4__["default"];
     var NavItem = __dependency5__["default"];
+    var ValidComponentChildren = __dependency6__["default"];
 
-    function hasTab (child) {
-      return !!child.props.tab;
+    function getDefaultActiveKeyFromChildren(children) {
+      var defaultActiveKey;
+
+      ValidComponentChildren.forEach(children, function(child) {
+        if (defaultActiveKey == null) {
+          defaultActiveKey = child.props.key;
+        }
+      });
+
+      return defaultActiveKey;
     }
 
     var TabbedArea = React.createClass({displayName: 'TabbedArea',
@@ -31,13 +40,11 @@ define(
       },
 
       getInitialState: function () {
-        var defaultActiveKey = this.props.defaultActiveKey;
+        var defaultActiveKey = this.props.defaultActiveKey != null ?
+          this.props.defaultActiveKey : getDefaultActiveKeyFromChildren(this.props.children);
 
-        if (defaultActiveKey == null) {
-          var children = this.props.children;
-          defaultActiveKey =
-            Array.isArray(children) ? children[0].props.key : children.props.key;
-        }
+        // TODO: In __DEV__ mode warn via `console.warn` if no `defaultActiveKey` has
+        // been set by this point, invalid children or missing key properties are likely the cause.
 
         return {
           activeKey: defaultActiveKey,
@@ -63,9 +70,13 @@ define(
         var activeKey =
           this.props.activeKey != null ? this.props.activeKey : this.state.activeKey;
 
+        function renderTabIfSet(child) {
+          return child.props.tab != null ? this.renderTab(child) : null;
+        }
+
         var nav = this.transferPropsTo(
           Nav( {bsStyle:this.props.panel ? '' : 'tabs', activeKey:activeKey, onSelect:this.handleSelect, ref:"tabs", panel:this.props.panel}, 
-              utils.modifyChildren(utils.filterChildren(this.props.children, hasTab), this.renderTab)
+            ValidComponentChildren.map(this.props.children, renderTabIfSet, this)
           )
         );
 
@@ -75,7 +86,7 @@ define(
               nav
             ),
             React.DOM.div( {id:this.props.id, className:"tab-content", ref:"panes"}, 
-              utils.modifyChildren(this.props.children, this.renderPane)
+              ValidComponentChildren.map(this.props.children, this.renderPane)
             )
           )
         );

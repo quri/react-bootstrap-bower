@@ -1,6 +1,6 @@
 define(
-  ["./react-es6","./react-es6/lib/cx","./BootstrapMixin","./utils","exports"],
-  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __exports__) {
+  ["./react-es6","./react-es6/lib/cx","./BootstrapMixin","./utils","./ValidComponentChildren","exports"],
+  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __dependency5__, __exports__) {
     "use strict";
     /** @jsx React.DOM */
 
@@ -8,6 +8,7 @@ define(
     var classSet = __dependency2__["default"];
     var BootstrapMixin = __dependency3__["default"];
     var utils = __dependency4__["default"];
+    var ValidComponentChildren = __dependency5__["default"];
 
     var Carousel = React.createClass({displayName: 'Carousel',
       mixins: [BootstrapMixin],
@@ -57,18 +58,6 @@ define(
           'prev' : 'next';
       },
 
-      getNumberOfItems: function () {
-        if (!this.props.children) {
-          return 0;
-        }
-
-        if (!Array.isArray(this.props.children)) {
-          return 1;
-        }
-
-        return this.props.children.length;
-      },
-
       componentWillReceiveProps: function (nextProps) {
         var activeIndex = this.getActiveIndex();
 
@@ -87,8 +76,9 @@ define(
 
       next: function (e) {
         var index = this.getActiveIndex() + 1;
+        var count = ValidComponentChildren.numberOf(this.props.children);
 
-        if (index > this.getNumberOfItems() - 1) {
+        if (index > count - 1) {
           if (!this.props.wrap) {
             return;
           }
@@ -104,12 +94,13 @@ define(
 
       prev: function (e) {
         var index = this.getActiveIndex() - 1;
+        var count = ValidComponentChildren.numberOf(this.props.children);
 
         if (index < 0) {
           if (!this.props.wrap) {
             return;
           }
-          index = this.getNumberOfItems() - 1;
+          index = count - 1;
         }
 
         this.handleSelect(index, 'prev');
@@ -161,7 +152,7 @@ define(
             onMouseOut:this.handleMouseOut}, 
             this.props.indicators ? this.renderIndicators() : null,
             React.DOM.div( {className:"carousel-inner", ref:"inner"}, 
-              utils.modifyChildren(this.props.children, this.renderItem)
+              ValidComponentChildren.map(this.props.children, this.renderItem)
             ),
             this.props.controls ? this.renderControls() : null
           )
@@ -201,20 +192,20 @@ define(
 
         return [
           (this.props.wrap || activeIndex !== 0) ? this.renderPrev() : null,
-          (this.props.wrap || activeIndex !== this.getNumberOfItems() - 1) ?
+          (this.props.wrap || activeIndex !== ValidComponentChildren.numberOf(this.props.children) - 1) ?
             this.renderNext() : null
         ];
       },
 
-      renderIndicator: function (child, i) {
-        var className = (i === this.getActiveIndex()) ?
+      renderIndicator: function (child, index) {
+        var className = (index === this.getActiveIndex()) ?
           'active' : null;
 
         return [
           React.DOM.li(
-            {key:i,
+            {key:index,
             className:className,
-            onClick:this.handleSelect.bind(this, i, null)} ),
+            onClick:this.handleSelect.bind(this, index, null)} ),
           ' '
         ];
       },
@@ -222,7 +213,7 @@ define(
       renderIndicators: function () {
         return (
           React.DOM.ol( {className:"carousel-indicators"}, 
-            utils.modifyChildren(this.props.children, this.renderIndicator)
+            ValidComponentChildren.map(this.props.children, this.renderIndicator)
           )
         );
       },
@@ -242,11 +233,11 @@ define(
         this.waitForNext();
       },
 
-      renderItem: function (child, i) {
-        var activeIndex = this.getActiveIndex(),
-            isActive = (i === activeIndex),
-            isPreviousActive = this.state.previousActiveIndex != null &&
-                this.state.previousActiveIndex === i && this.props.slide;
+      renderItem: function (child, index) {
+        var activeIndex = this.getActiveIndex();
+        var isActive = (index === activeIndex);
+        var isPreviousActive = this.state.previousActiveIndex != null &&
+                this.state.previousActiveIndex === index && this.props.slide;
 
         return utils.cloneWithProps(
             child,
@@ -254,8 +245,8 @@ define(
               active: isActive,
               ref: child.props.ref,
               key: child.props.key != null ?
-                child.props.key : i,
-              index: i,
+                child.props.key : index,
+              index: index,
               animateOut: isPreviousActive,
               animateIn: isActive && this.state.previousActiveIndex != null && this.props.slide,
               direction: this.state.direction,

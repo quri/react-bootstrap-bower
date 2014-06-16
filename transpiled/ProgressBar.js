@@ -1,6 +1,6 @@
 define(
-  ["./react-es6","./react-es6/lib/cx","./Interpolate","./BootstrapMixin","./utils","exports"],
-  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __dependency5__, __exports__) {
+  ["./react-es6","./react-es6/lib/cx","./Interpolate","./BootstrapMixin","./utils","./ValidComponentChildren","exports"],
+  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __dependency5__, __dependency6__, __exports__) {
     "use strict";
     /** @jsx React.DOM */
 
@@ -9,6 +9,7 @@ define(
     var Interpolate = __dependency3__["default"];
     var BootstrapMixin = __dependency4__["default"];
     var utils = __dependency5__["default"];
+    var ValidComponentChildren = __dependency6__["default"];
 
 
     var ProgressBar = React.createClass({displayName: 'ProgressBar',
@@ -48,7 +49,7 @@ define(
           classes['progress-striped'] = true;
         }
 
-        if (!this.props.children) {
+        if (!ValidComponentChildren.hasValidComponent(this.props.children)) {
           if (!this.props.isChild) {
             return this.transferPropsTo(
               React.DOM.div( {className:classSet(classes)}, 
@@ -63,7 +64,7 @@ define(
         } else {
           return this.transferPropsTo(
             React.DOM.div( {className:classSet(classes)}, 
-              utils.modifyChildren(this.props.children, this.renderChildBar)
+              ValidComponentChildren.map(this.props.children, this.renderChildBar)
             )
           );
         }

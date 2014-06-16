@@ -1,6 +1,6 @@
 define(
-  ["./react-es6","./react-es6/lib/cx","./BootstrapMixin","./CollapsableMixin","./utils","./domUtils","exports"],
-  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __dependency5__, __dependency6__, __exports__) {
+  ["./react-es6","./react-es6/lib/cx","./BootstrapMixin","./CollapsableMixin","./utils","./domUtils","./ValidComponentChildren","exports"],
+  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __dependency5__, __dependency6__, __dependency7__, __exports__) {
     "use strict";
     /** @jsx React.DOM */
 
@@ -10,6 +10,7 @@ define(
     var CollapsableMixin = __dependency4__["default"];
     var utils = __dependency5__["default"];
     var domUtils = __dependency6__["default"];
+    var ValidComponentChildren = __dependency7__["default"];
 
 
     var Nav = React.createClass({displayName: 'Nav',
@@ -19,6 +20,7 @@ define(
         bsStyle: React.PropTypes.oneOf(['tabs','pills', '']),
         stacked: React.PropTypes.bool,
         justified: React.PropTypes.bool,
+        panel: React.PropTypes.bool,
         onSelect: React.PropTypes.func,
         isCollapsable: React.PropTypes.bool,
         isOpen: React.PropTypes.bool,
@@ -48,12 +50,12 @@ define(
 
         classes['navbar-collapse'] = this.props.isCollapsable;
 
-        if (this.props.navbar) {
-          return this.renderUl();
+        if (this.props.navbar && !this.props.isCollapsable) {
+          return this.transferPropsTo(this.renderUl());
         }
 
         return this.transferPropsTo(
-          React.DOM.nav( {className:classSet(classes)},
+          React.DOM.nav( {className:classSet(classes)}, 
             this.renderUl()
           )
         );
@@ -64,11 +66,12 @@ define(
 
         classes['nav-stacked'] = this.props.stacked;
         classes['nav-justified'] = this.props.justified;
+        classes['panel-tabs'] = this.props.panel;
         classes['navbar-nav'] = this.props.navbar;
 
         return (
-          React.DOM.ul( {className:classSet(classes), ref:"ul"},
-            utils.modifyChildren(this.props.children, this.renderNavItem)
+          React.DOM.ul( {className:classSet(classes), ref:"ul"}, 
+            ValidComponentChildren.map(this.props.children, this.renderNavItem)
           )
         );
       },

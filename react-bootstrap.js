@@ -1353,7 +1353,8 @@ define(
         newProps.children = child.props.children;
       }
 
-      return child.constructor.ConvenienceConstructor(newProps);
+      return child.constructor.ConvenienceConstructor ?
+        child.constructor.ConvenienceConstructor(newProps) : child.constructor(newProps);
     }
 
     __exports__["default"] = cloneWithProps;
@@ -1392,6 +1393,10 @@ define(
        * Modify each item in a React children array without
        * unnecessarily allocating a new array.
        *
+       * @deprecated
+       * `React.Children.map` should be used instead,
+       * also see `ValidComponentChildren.map`.
+       *
        * @param {array|object} children
        * @param {function} modifier
        * @returns {*}
@@ -1407,6 +1412,11 @@ define(
       /**
        * Filter each item in a React children array without
        * unnecessarily allocating a new array.
+       *
+       * @deprecated
+       * `React.Children.map` should be used instead with a filter
+       * function to null out unwanted children,
+       * also see `ValidComponentChildren.map`.
        *
        * @param {array|object} children
        * @param {function} filter
@@ -1540,8 +1550,104 @@ define(
     };
   });
 define(
-  'transpiled/PanelGroup',["./react-es6","./react-es6/lib/cx","./BootstrapMixin","./utils","exports"],
-  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __exports__) {
+  'transpiled/ValidComponentChildren',["./react-es6","exports"],
+  function(__dependency1__, __exports__) {
+    
+    var React = __dependency1__["default"];
+
+
+    /**
+     * Maps children that are typically specified as `props.children`,
+     * but only iterates over children that are "valid components".
+     *
+     * The mapFunction provided index will be normalised to the components mapped,
+     * so an invalid component would not increase the index.
+     *
+     * @param {?*} children Children tree container.
+     * @param {function(*, int)} mapFunction.
+     * @param {*} mapContext Context for mapFunction.
+     * @return {object} Object containing the ordered map of results.
+     */
+    function mapValidComponents(children, func, context) {
+      var index = 0;
+
+      return React.Children.map(children, function (child) {
+        if (React.isValidComponent(child)) {
+          var lastIndex = index;
+          index++;
+          return func.call(context, child, lastIndex);
+        }
+
+        return child;
+      });
+    }
+
+    /**
+     * Iterates through children that are typically specified as `props.children`,
+     * but only iterates over children that are "valid components".
+     *
+     * The provided forEachFunc(child, index) will be called for each
+     * leaf child with the index reflecting the position relative to "valid components".
+     *
+     * @param {?*} children Children tree container.
+     * @param {function(*, int)} forEachFunc.
+     * @param {*} forEachContext Context for forEachContext.
+     */
+    function forEachValidComponents(children, func, context) {
+      var index = 0;
+
+      return React.Children.forEach(children, function (child) {
+        if (React.isValidComponent(child)) {
+          func.call(context, child, index);
+          index++;
+        }
+      });
+    }
+
+    /**
+     * Count the number of "valid components" in the Children container.
+     *
+     * @param {?*} children Children tree container.
+     * @returns {number}
+     */
+    function numberOfValidComponents(children) {
+      var count = 0;
+
+      React.Children.forEach(children, function (child) {
+        if (React.isValidComponent(child)) { count++; }
+      });
+
+      return count;
+    }
+
+    /**
+     * Determine if the Child container has one or more "valid components".
+     *
+     * @param {?*} children Children tree container.
+     * @returns {boolean}
+     */
+    function hasValidComponent(children) {
+      var hasValid = false;
+
+      React.Children.forEach(children, function (child) {
+        if (!hasValid && React.isValidComponent(child)) {
+          hasValid = true;
+        }
+      });
+
+      return hasValid;
+    }
+
+    __exports__["default"] = {
+      map: mapValidComponents,
+      forEach: forEachValidComponents,
+      numberOf: numberOfValidComponents,
+      hasValidComponent: hasValidComponent
+    };
+  });
+define(
+  'transpiled/PanelGroup',["./react-es6","./react-es6/lib/cx","./BootstrapMixin","./utils","./ValidComponentChildren","exports"],
+  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __dependency5__, __exports__) {
     
     /** @jsx React.DOM */
 
@@ -1549,11 +1655,15 @@ define(
     var classSet = __dependency2__["default"];
     var BootstrapMixin = __dependency3__["default"];
     var utils = __dependency4__["default"];
+    var ValidComponentChildren = __dependency5__["default"];
 
     var PanelGroup = React.createClass({displayName: 'PanelGroup',
       mixins: [BootstrapMixin],
 
       propTypes: {
+        collapsable: React.PropTypes.bool,
+        activeKey: React.PropTypes.bool,
+        defaultActiveKey: React.PropTypes.bool,
         onSelect: React.PropTypes.func
       },
 
@@ -1572,9 +1682,13 @@ define(
       },
 
       render: function () {
+        classes = this.getBsClassSet();
+        classes['accordion'] = this.props.isAccordion;
+        classes['accordion-alt'] = this.props.isAccordion;
+
         return this.transferPropsTo(
-          React.DOM.div( {className:classSet(this.getBsClassSet())}, 
-              utils.modifyChildren(this.props.children, this.renderPanel)
+          React.DOM.div( {className:classSet(classes)}, 
+            ValidComponentChildren.map(this.props.children, this.renderPanel)
           )
         );
       },
@@ -1589,9 +1703,9 @@ define(
           ref: child.props.ref
         };
 
-        if (this.props.isAccordion) {
-          props.isCollapsable = true;
-          props.isOpen = (child.props.key === activeKey);
+        if (this.props.accordion) {
+          props.collapsable = true;
+          props.expanded = (child.props.key === activeKey);
           props.onSelect = this.handleSelect;
         }
 
@@ -1638,8 +1752,8 @@ define(
 
       render: function () {
         return this.transferPropsTo(
-          PanelGroup( {isAccordion:true}, 
-              this.props.children
+          PanelGroup( {accordion:true}, 
+            this.props.children
           )
         );
       }
@@ -1956,18 +2070,18 @@ define('BootstrapMixin',['./transpiled/BootstrapMixin'], function (BootstrapMixi
   return BootstrapMixin['default'];
 });
 define(
-  'transpiled/Badge',["./react-es6","exports"],
-  function(__dependency1__, __exports__) {
+  'transpiled/Badge',["./react-es6","./ValidComponentChildren","exports"],
+  function(__dependency1__, __dependency2__, __exports__) {
     
     /** @jsx React.DOM */
 
     var React = __dependency1__["default"];
+    var ValidComponentChildren = __dependency2__["default"];
 
     var Badge = React.createClass({displayName: 'Badge',
-
       render: function () {
         return this.transferPropsTo(
-          React.DOM.span( {className:this.props.children ? 'badge': null}, 
+          React.DOM.span( {className:ValidComponentChildren.hasValidComponent(this.props.children) ? 'badge': null}, 
             this.props.children
           )
         );
@@ -2149,8 +2263,8 @@ define('ButtonToolbar',['./transpiled/ButtonToolbar'], function (ButtonToolbar) 
   return ButtonToolbar['default'];
 });
 define(
-  'transpiled/Carousel',["./react-es6","./react-es6/lib/cx","./BootstrapMixin","./utils","exports"],
-  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __exports__) {
+  'transpiled/Carousel',["./react-es6","./react-es6/lib/cx","./BootstrapMixin","./utils","./ValidComponentChildren","exports"],
+  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __dependency5__, __exports__) {
     
     /** @jsx React.DOM */
 
@@ -2158,6 +2272,7 @@ define(
     var classSet = __dependency2__["default"];
     var BootstrapMixin = __dependency3__["default"];
     var utils = __dependency4__["default"];
+    var ValidComponentChildren = __dependency5__["default"];
 
     var Carousel = React.createClass({displayName: 'Carousel',
       mixins: [BootstrapMixin],
@@ -2207,18 +2322,6 @@ define(
           'prev' : 'next';
       },
 
-      getNumberOfItems: function () {
-        if (!this.props.children) {
-          return 0;
-        }
-
-        if (!Array.isArray(this.props.children)) {
-          return 1;
-        }
-
-        return this.props.children.length;
-      },
-
       componentWillReceiveProps: function (nextProps) {
         var activeIndex = this.getActiveIndex();
 
@@ -2237,8 +2340,9 @@ define(
 
       next: function (e) {
         var index = this.getActiveIndex() + 1;
+        var count = ValidComponentChildren.numberOf(this.props.children);
 
-        if (index > this.getNumberOfItems() - 1) {
+        if (index > count - 1) {
           if (!this.props.wrap) {
             return;
           }
@@ -2254,12 +2358,13 @@ define(
 
       prev: function (e) {
         var index = this.getActiveIndex() - 1;
+        var count = ValidComponentChildren.numberOf(this.props.children);
 
         if (index < 0) {
           if (!this.props.wrap) {
             return;
           }
-          index = this.getNumberOfItems() - 1;
+          index = count - 1;
         }
 
         this.handleSelect(index, 'prev');
@@ -2311,7 +2416,7 @@ define(
             onMouseOut:this.handleMouseOut}, 
             this.props.indicators ? this.renderIndicators() : null,
             React.DOM.div( {className:"carousel-inner", ref:"inner"}, 
-              utils.modifyChildren(this.props.children, this.renderItem)
+              ValidComponentChildren.map(this.props.children, this.renderItem)
             ),
             this.props.controls ? this.renderControls() : null
           )
@@ -2351,20 +2456,20 @@ define(
 
         return [
           (this.props.wrap || activeIndex !== 0) ? this.renderPrev() : null,
-          (this.props.wrap || activeIndex !== this.getNumberOfItems() - 1) ?
+          (this.props.wrap || activeIndex !== ValidComponentChildren.numberOf(this.props.children) - 1) ?
             this.renderNext() : null
         ];
       },
 
-      renderIndicator: function (child, i) {
-        var className = (i === this.getActiveIndex()) ?
+      renderIndicator: function (child, index) {
+        var className = (index === this.getActiveIndex()) ?
           'active' : null;
 
         return [
           React.DOM.li(
-            {key:i,
+            {key:index,
             className:className,
-            onClick:this.handleSelect.bind(this, i, null)} ),
+            onClick:this.handleSelect.bind(this, index, null)} ),
           ' '
         ];
       },
@@ -2372,7 +2477,7 @@ define(
       renderIndicators: function () {
         return (
           React.DOM.ol( {className:"carousel-indicators"}, 
-            utils.modifyChildren(this.props.children, this.renderIndicator)
+            ValidComponentChildren.map(this.props.children, this.renderIndicator)
           )
         );
       },
@@ -2392,11 +2497,11 @@ define(
         this.waitForNext();
       },
 
-      renderItem: function (child, i) {
-        var activeIndex = this.getActiveIndex(),
-            isActive = (i === activeIndex),
-            isPreviousActive = this.state.previousActiveIndex != null &&
-                this.state.previousActiveIndex === i && this.props.slide;
+      renderItem: function (child, index) {
+        var activeIndex = this.getActiveIndex();
+        var isActive = (index === activeIndex);
+        var isPreviousActive = this.state.previousActiveIndex != null &&
+                this.state.previousActiveIndex === index && this.props.slide;
 
         return utils.cloneWithProps(
             child,
@@ -2404,8 +2509,8 @@ define(
               active: isActive,
               ref: child.props.ref,
               key: child.props.key != null ?
-                child.props.key : i,
-              index: i,
+                child.props.key : index,
+              index: index,
               animateOut: isPreviousActive,
               animateIn: isActive && this.state.previousActiveIndex != null && this.props.slide,
               direction: this.state.direction,
@@ -2800,32 +2905,39 @@ define('Col',['./transpiled/Col'], function (Col) {
   return Col['default'];
 });
 define(
-  'transpiled/CollapsableMixin',["./react-es6/lib/ReactTransitionEvents","exports"],
-  function(__dependency1__, __exports__) {
+  'transpiled/CollapsableMixin',["./react-es6","./react-es6/lib/ReactTransitionEvents","exports"],
+  function(__dependency1__, __dependency2__, __exports__) {
     
-    var ReactTransitionEvents = __dependency1__["default"];
+    var React = __dependency1__["default"];
+    var ReactTransitionEvents = __dependency2__["default"];
 
     var CollapsableMixin = {
 
-      getInitialState: function() {
+      propTypes: {
+        collapsable: React.PropTypes.bool,
+        defaultExpanded: React.PropTypes.bool,
+        expanded: React.PropTypes.bool
+      },
+
+      getInitialState: function () {
         return {
-          isOpen: this.props.defaultOpen != null ? this.props.defaultOpen : null,
-          isCollapsing: false
+          expanded: this.props.defaultExpanded != null ? this.props.defaultExpanded : null,
+          collapsing: false
         };
       },
 
       handleTransitionEnd: function () {
         this._collapseEnd = true;
         this.setState({
-          isCollapsing: false
+          collapsing: false
         });
       },
 
       componentWillReceiveProps: function (newProps) {
-        if (this.props.isCollapsable && newProps.isOpen !== this.props.isOpen) {
+        if (this.props.collapsable && newProps.expanded !== this.props.expanded) {
           this._collapseEnd = false;
           this.setState({
-            isCollapsing: true
+            collapsing: true
           });
         }
       },
@@ -2866,7 +2978,7 @@ define(
         var node = this.getCollapsableDOMNode();
 
         this._removeEndTransitionListener();
-        if (node && nextProps.isOpen !== this.props.isOpen && this.props.isOpen) {
+        if (node && nextProps.expanded !== this.props.expanded && this.props.expanded) {
           node.style[dimension] = this.getCollapsableDimensionValue() + 'px';
         }
       },
@@ -2876,7 +2988,7 @@ define(
       },
 
       _afterRender: function () {
-        if (!this.props.isCollapsable) {
+        if (!this.props.collapsable) {
           return;
         }
 
@@ -2890,13 +3002,14 @@ define(
         var node = this.getCollapsableDOMNode();
 
         if (node) {
-          node.style[dimension] = this.isOpen() ?
+          node.style[dimension] = this.isExpanded() ?
             this.getCollapsableDimensionValue() + 'px' : '0px';
         }
       },
 
-      isOpen: function () {
-        return (this.props.isOpen != null) ? this.props.isOpen : this.state.isOpen;
+      isExpanded: function () {
+        return (this.props.expanded != null) ?
+          this.props.expanded : this.state.expanded;
       },
 
       getCollapsableClassSet: function (className) {
@@ -2910,9 +3023,9 @@ define(
           });
         }
 
-        classes.collapsing = this.state.isCollapsing;
-        classes.collapse = !this.state.isCollapsing;
-        classes['in'] = this.isOpen() && !this.state.isCollapsing;
+        classes.collapsing = this.state.collapsing;
+        classes.collapse = !this.state.collapsing;
+        classes['in'] = this.isExpanded() && !this.state.collapsing;
 
         return classes;
       }
@@ -3001,14 +3114,15 @@ define(
     __exports__["default"] = DropdownStateMixin;
   });
 define(
-  'transpiled/DropdownMenu',["./react-es6","./react-es6/lib/cx","./utils","exports"],
-  function(__dependency1__, __dependency2__, __dependency3__, __exports__) {
+  'transpiled/DropdownMenu',["./react-es6","./react-es6/lib/cx","./utils","./ValidComponentChildren","exports"],
+  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __exports__) {
     
     /** @jsx React.DOM */
 
     var React = __dependency1__["default"];
     var classSet = __dependency2__["default"];
     var utils = __dependency3__["default"];
+    var ValidComponentChildren = __dependency4__["default"];
 
     var DropdownMenu = React.createClass({displayName: 'DropdownMenu',
       propTypes: {
@@ -3026,7 +3140,7 @@ define(
             React.DOM.ul(
               {className:classSet(classes),
               role:"menu"}, 
-              utils.modifyChildren(this.props.children, this.renderMenuItem)
+              ValidComponentChildren.map(this.props.children, this.renderMenuItem)
             )
           );
       },
@@ -3067,34 +3181,35 @@ define(
       mixins: [BootstrapMixin, DropdownStateMixin],
 
       propTypes: {
-        pullRight:    React.PropTypes.bool,
-        title:    React.PropTypes.renderable,
-        href:     React.PropTypes.string,
-        onClick:  React.PropTypes.func,
-        onSelect: React.PropTypes.func,
-        navItem:  React.PropTypes.bool
+        pullRight: React.PropTypes.bool,
+        dropup:    React.PropTypes.bool,
+        title:     React.PropTypes.renderable,
+        href:      React.PropTypes.string,
+        onClick:   React.PropTypes.func,
+        onSelect:  React.PropTypes.func,
+        navItem:   React.PropTypes.bool
       },
 
       render: function () {
-        var className = this.props.className ?
-          this.props.className + ' dropdown-toggle' : 'dropdown-toggle';
+        var className = 'dropdown-toggle';
 
         var renderMethod = this.props.navItem ?
           'renderNavItem' : 'renderButtonGroup';
 
         return this[renderMethod]([
-          Button(
+          this.transferPropsTo(Button(
             {ref:"dropdownButton",
-            href:this.props.href,
-            bsStyle:this.props.bsStyle,
             className:className,
             onClick:this.handleDropdownClick,
-            id:this.props.id,
             key:0,
-            navDropdown:this.props.navItem}, 
+            navDropdown:this.props.navItem,
+            navItem:null,
+            title:null,
+            pullRight:null,
+            dropup:null}, 
             this.props.title,' ',
             React.DOM.span( {className:"caret"} )
-          ),
+          )),
           DropdownMenu(
             {ref:"menu",
             'aria-labelledby':this.props.id,
@@ -3212,7 +3327,7 @@ define(
         if (els.length) {
           this._fadeOutEl = document.createElement('div');
           document.body.appendChild(this._fadeOutEl);
-          this._fadeOutEl.innerHTML = this.getDOMNode().innerHTML;
+          this._fadeOutEl.appendChild(this.getDOMNode().cloneNode(true));
           // Firefox needs delay for transition to be triggered
           setTimeout(this._fadeOut, 20);
         }
@@ -3311,104 +3426,198 @@ define(
     var React = __dependency1__["default"];
     var classSet = __dependency2__["default"];
 
-    var INPUT_TYPES = [
-      'text',
-      'password',
-      'datetime',
-      'datetime-local',
-      'date',
-      'month',
-      'time',
-      'week',
-      'number',
-      'email',
-      'url',
-      'search',
-      'tel',
-      'color'
-    ];
-
     var Input = React.createClass({displayName: 'Input',
       propTypes: {
-        name: React.PropTypes.string.isRequired,
-        type: React.PropTypes.oneOf(INPUT_TYPES).isRequired,
-        id: React.PropTypes.string,
-        className: React.PropTypes.string,
-        placeholder: React.PropTypes.string,
-        label: React.PropTypes.string,
-        required: React.PropTypes.bool,
-        oneOf: React.PropTypes.array
-        //minLength: React.PropTypes.int
+        type: React.PropTypes.string,
+        label: React.PropTypes.renderable,
+        help: React.PropTypes.renderable,
+        addonBefore: React.PropTypes.string,
+        addonAfter: React.PropTypes.string,
+        bsStyle: React.PropTypes.oneOf(['success', 'warning', 'error']),
+        hasFeedback: React.PropTypes.bool,
+        groupClassName: React.PropTypes.string,
+        wrapperClassName: React.PropTypes.string,
+        labelClassName: React.PropTypes.string,
       },
 
-      getInitialState: function () {
-        return {
-          error: false
-        };
+      getInputDOMNode: function () {
+        return this.refs.input.getDOMNode();
       },
 
       getValue: function () {
-        return this.refs.input.getDOMNode().value;
+        if (this.props.type === 'static') {
+          return this.props.value;
+        }
+        else if (this.props.type) {
+          return this.getInputDOMNode().value;
+        }
+        else {
+          throw Error('Cannot use getValue without specifying input type.');
+        }
+      },
+
+      getChecked: function () {
+        return this.getInputDOMNode().checked;
+      },
+
+      isCheckboxOrRadio: function () {
+        return this.props.type === 'radio' || this.props.type === 'checkbox';
       },
 
       renderInput: function () {
+        var input = null;
+
+        if (!this.props.type) {
+          return this.props.children
+        }
+
+        switch (this.props.type) {
+          case 'select':
+            input = (
+              React.DOM.select( {className:"form-control", ref:"input", key:"input"}, 
+                this.props.children
+              )
+            );
+            break;
+          case 'textarea':
+            input = React.DOM.textarea( {className:"form-control", ref:"input", key:"input"} );
+            break;
+          case 'static':
+            input = (
+              React.DOM.p( {className:"form-control-static", ref:"input",  key:"input"}, 
+                this.props.value
+              )
+            );
+            break;
+          default:
+            var className = this.isCheckboxOrRadio() ? '' : 'form-control';
+            input = React.DOM.input( {className:className, ref:"input", key:"input"} );
+        }
+
+        return this.transferPropsTo(input);
+      },
+
+      renderInputGroup: function (children) {
+        var addonBefore = this.props.addonBefore ? (
+          React.DOM.span( {className:"input-group-addon", key:"addonBefore"}, 
+            this.props.addonBefore
+          )
+        ) : null;
+
+        var addonAfter = this.props.addonAfter ? (
+          React.DOM.span( {className:"input-group-addon", key:"addonAfter"}, 
+            this.props.addonAfter
+          )
+        ) : null;
+
+        return addonBefore || addonAfter ? (
+          React.DOM.div( {className:"input-group", key:"input-group"}, 
+            addonBefore,
+            children,
+            addonAfter
+          )
+        ) : children;
+      },
+
+      renderIcon: function () {
         var classes = {
-          'form-control': true,
-          'input-md': true
+          'glyphicon': true,
+          'form-control-feedback': true,
+          'glyphicon-ok': this.props.bsStyle === 'success',
+          'glyphicon-warning-sign': this.props.bsStyle === 'warning',
+          'glyphicon-remove': this.props.bsStyle === 'error',
+        };
+
+        return this.props.hasFeedback ? (
+          React.DOM.span( {className:classSet(classes), key:"icon"} )
+        ) : null;
+      },
+
+      renderHelp: function () {
+        return this.props.help ? (
+          React.DOM.span( {className:"help-block", key:"help"}, 
+            this.props.help
+          )
+        ) : null;
+      },
+
+      renderCheckboxandRadioWrapper: function (children) {
+        var classes = {
+          'checkbox': this.props.type === 'checkbox',
+          'radio': this.props.type === 'radio',
         };
 
         return (
-          React.DOM.input(
-            {id:this.props.id,
-            type:this.props.type,
-            className:classSet(classes),
-            placeholder:this.props.placeholder,
-            ref:"input"}
+          React.DOM.div( {className:classSet(classes), key:"checkboxRadioWrapper"}, 
+            children
           )
         );
       },
 
-      renderLabel: function () {
-        return this.props.label ? React.DOM.label( {htmlFor:this.props.id}, this.props.label) : null;
+      renderWrapper: function (children) {
+        return this.props.wrapperClassName ? (
+          React.DOM.div( {className:this.props.wrapperClassName, key:"wrapper"}, 
+            children
+          )
+        ) : children;
+      },
+
+      renderLabel: function (children) {
+        var classes = {
+          'control-label': !this.isCheckboxOrRadio(),
+        };
+        classes[this.props.labelClassName] = this.props.labelClassName;
+
+        return this.props.label ? (
+          React.DOM.label( {htmlFor:this.props.id, className:classSet(classes), key:"label"}, 
+            children,
+            this.props.label
+          )
+        ) : children;
+      },
+
+      renderFormGroup: function (children) {
+        var classes = {
+          'form-group': true,
+          'has-feedback': this.props.hasFeedback,
+          'has-success': this.props.bsStyle === 'success',
+          'has-warning': this.props.bsStyle === 'warning',
+          'has-error': this.props.bsStyle === 'error',
+        };
+        classes[this.props.groupClassName] = this.props.groupClassName;
+
+        return (
+          React.DOM.div( {className:classSet(classes)}, 
+            children
+          )
+        );
       },
 
       render: function () {
-        var classes = {
-          'form-group': true,
-          'has-error': !!this.state.error
-        };
-
-        return (
-          React.DOM.div( {className:classSet(classes), onBlur:this.handleBlur, onFocus:this.handleFocus}, 
-            this.renderInput(),
-            this.renderLabel()
-          )
-        );
-      },
-
-      handleBlur: function (e) {
-        var value = this.getValue();
-        var error;
-
-        if (this.props.required && !value) {
-          error = 'required';
-        } else if (this.props.oneOf && !(value in this.props.oneOf)) {
-          error = 'oneOf';
-        } else if (this.props.minLength && value.length < this.props.minLength) {
-          error = 'minLength';
+        if (this.isCheckboxOrRadio()) {
+          return this.renderFormGroup(
+            this.renderWrapper([
+              this.renderCheckboxandRadioWrapper(
+                this.renderLabel(
+                  this.renderInput()
+                )
+              ),
+              this.renderHelp()
+            ])
+          );
         }
-
-        this.setState({
-          error: error
-        });
-      },
-
-      handleFocus: function(e) {
-        this.setState({
-          error: false
-        });
-
-        e.stopPropagation();
+        else {
+          return this.renderFormGroup([
+            this.renderLabel(),
+            this.renderWrapper([
+              this.renderInputGroup(
+                this.renderInput()
+              ),
+              this.renderIcon(),
+              this.renderHelp()
+            ])
+          ]);
+        }
       }
     });
 
@@ -3418,8 +3627,8 @@ define('Input',['./transpiled/Input'], function (Input) {
   return Input['default'];
 });
 define(
-  'transpiled/Interpolate',["./react-es6","./react-es6/lib/invariant","./utils","exports"],
-  function(__dependency1__, __dependency2__, __dependency3__, __exports__) {
+  'transpiled/Interpolate',["./react-es6","./react-es6/lib/invariant","./utils","./ValidComponentChildren","exports"],
+  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __exports__) {
     
     // https://www.npmjs.org/package/react-interpolate-component
     
@@ -3427,6 +3636,7 @@ define(
     var React = __dependency1__["default"];
     var invariant = __dependency2__["default"];
     var utils = __dependency3__["default"];
+    var ValidComponentChildren = __dependency4__["default"];
 
     function isString(object) {
       return Object.prototype.toString.call(object) === '[object String]';
@@ -3442,7 +3652,7 @@ define(
       },
 
       render: function() {
-        var format = this.props.children || this.props.format;
+        var format = ValidComponentChildren.hasValidComponent(this.props.children) ? this.props.children : this.props.format;
         var parent = this.props.component;
         var unsafe = this.props.unsafe === true;
         var props  = utils.extend({}, this.props);
@@ -3772,8 +3982,8 @@ define('Modal',['./transpiled/Modal'], function (Modal) {
   return Modal['default'];
 });
 define(
-  'transpiled/Nav',["./react-es6","./react-es6/lib/cx","./BootstrapMixin","./CollapsableMixin","./utils","./domUtils","exports"],
-  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __dependency5__, __dependency6__, __exports__) {
+  'transpiled/Nav',["./react-es6","./react-es6/lib/cx","./BootstrapMixin","./CollapsableMixin","./utils","./domUtils","./ValidComponentChildren","exports"],
+  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __dependency5__, __dependency6__, __dependency7__, __exports__) {
     
     /** @jsx React.DOM */
 
@@ -3783,15 +3993,17 @@ define(
     var CollapsableMixin = __dependency4__["default"];
     var utils = __dependency5__["default"];
     var domUtils = __dependency6__["default"];
+    var ValidComponentChildren = __dependency7__["default"];
 
 
     var Nav = React.createClass({displayName: 'Nav',
       mixins: [BootstrapMixin, CollapsableMixin],
 
       propTypes: {
-        bsStyle: React.PropTypes.oneOf(['tabs','pills']),
+        bsStyle: React.PropTypes.oneOf(['tabs','pills', '']),
         stacked: React.PropTypes.bool,
         justified: React.PropTypes.bool,
+        panel: React.PropTypes.bool,
         onSelect: React.PropTypes.func,
         isCollapsable: React.PropTypes.bool,
         isOpen: React.PropTypes.bool,
@@ -3821,8 +4033,8 @@ define(
 
         classes['navbar-collapse'] = this.props.isCollapsable;
 
-        if (this.props.navbar) {
-          return this.renderUl();
+        if (this.props.navbar && !this.props.isCollapsable) {
+          return this.transferPropsTo(this.renderUl());
         }
 
         return this.transferPropsTo(
@@ -3837,11 +4049,12 @@ define(
 
         classes['nav-stacked'] = this.props.stacked;
         classes['nav-justified'] = this.props.justified;
+        classes['panel-tabs'] = this.props.panel;
         classes['navbar-nav'] = this.props.navbar;
 
         return (
           React.DOM.ul( {className:classSet(classes), ref:"ul"}, 
-            utils.modifyChildren(this.props.children, this.renderNavItem)
+            ValidComponentChildren.map(this.props.children, this.renderNavItem)
           )
         );
       },
@@ -3886,8 +4099,8 @@ define('Nav',['./transpiled/Nav'], function (Nav) {
   return Nav['default'];
 });
 define(
-  'transpiled/Navbar',["./react-es6","./react-es6/lib/cx","./BootstrapMixin","./PropTypes","./utils","./Nav","exports"],
-  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __dependency5__, __dependency6__, __exports__) {
+  'transpiled/Navbar',["./react-es6","./react-es6/lib/cx","./BootstrapMixin","./PropTypes","./utils","./Nav","./ValidComponentChildren","exports"],
+  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __dependency5__, __dependency6__, __dependency7__, __exports__) {
     
     /** @jsx React.DOM */
 
@@ -3897,6 +4110,7 @@ define(
     var PropTypes = __dependency4__["default"];
     var utils = __dependency5__["default"];
     var Nav = __dependency6__["default"];
+    var ValidComponentChildren = __dependency7__["default"];
 
 
     var Navbar = React.createClass({displayName: 'Navbar',
@@ -3907,12 +4121,14 @@ define(
         fixedBottom: React.PropTypes.bool,
         staticTop: React.PropTypes.bool,
         inverse: React.PropTypes.bool,
+        fluid: React.PropTypes.bool,
         role: React.PropTypes.string,
         componentClass: PropTypes.componentClass,
         brand: React.PropTypes.renderable,
         toggleButton: React.PropTypes.renderable,
         onToggle: React.PropTypes.func,
-        fluid: React.PropTypes.func
+        navExpanded: React.PropTypes.bool,
+        defaultNavExpanded: React.PropTypes.bool
       },
 
       getDefaultProps: function () {
@@ -3926,7 +4142,7 @@ define(
 
       getInitialState: function () {
         return {
-          navOpen: this.props.defaultNavOpen
+          navExpanded: this.props.defaultNavExpanded
         };
       },
 
@@ -3964,7 +4180,7 @@ define(
           componentClass( {className:classSet(classes)}, 
             React.DOM.div( {className:this.props.fluid ? 'container-fluid' : 'container'}, 
               (this.props.brand || this.props.toggleButton || this.props.toggleNavKey) ? this.renderHeader() : null,
-              React.Children.map(this.props.children, this.renderChild)
+              ValidComponentChildren.map(this.props.children, this.renderChild)
             )
           )
         );
@@ -4485,17 +4701,16 @@ define('PageHeader',['./transpiled/PageHeader'], function (PageHeader) {
   return PageHeader['default'];
 });
 define(
-  'transpiled/Panel',["./react-es6","./react-es6/lib/cx","./react-es6/lib/ReactTransitionEvents","./BootstrapMixin","./CollapsableMixin","./utils","exports"],
-  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __dependency5__, __dependency6__, __exports__) {
+  'transpiled/Panel',["./react-es6","./react-es6/lib/cx","./BootstrapMixin","./CollapsableMixin","./utils","exports"],
+  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __dependency5__, __exports__) {
     
     /** @jsx React.DOM */
 
     var React = __dependency1__["default"];
     var classSet = __dependency2__["default"];
-    var ReactTransitionEvents = __dependency3__["default"];
-    var BootstrapMixin = __dependency4__["default"];
-    var CollapsableMixin = __dependency5__["default"];
-    var utils = __dependency6__["default"];
+    var BootstrapMixin = __dependency3__["default"];
+    var CollapsableMixin = __dependency4__["default"];
+    var utils = __dependency5__["default"];
 
     var Panel = React.createClass({displayName: 'Panel',
       mixins: [BootstrapMixin, CollapsableMixin],
@@ -4503,8 +4718,6 @@ define(
       propTypes: {
         header: React.PropTypes.renderable,
         footer: React.PropTypes.renderable,
-        isCollapsable: React.PropTypes.bool,
-        isOpen: React.PropTypes.bool,
         onClick: React.PropTypes.func
       },
 
@@ -4525,7 +4738,7 @@ define(
         e.preventDefault();
 
         this.setState({
-          isOpen: !this.state.isOpen
+          expanded: !this.state.expanded
         });
       },
 
@@ -4550,9 +4763,9 @@ define(
         classes['panel'] = true;
 
         return (
-          React.DOM.div( {className:classSet(classes), id:this.props.isCollapsable ? null : this.props.id}, 
+          React.DOM.div( {className:classSet(classes), id:this.props.collapsable ? null : this.props.id}, 
             this.renderHeading(),
-            this.props.isCollapsable ? this.renderCollapsableBody() : this.renderBody(),
+            this.props.collapsable ? this.renderCollapsableBody() : this.renderBody(),
             this.renderFooter()
           )
         );
@@ -4582,9 +4795,9 @@ define(
         }
 
         if (!React.isValidComponent(header) || Array.isArray(header)) {
-          header = this.props.isCollapsable ?
+          header = this.props.collapsable ?
             this.renderCollapsableTitle(header) : header;
-        } else if (this.props.isCollapsable) {
+        } else if (this.props.collapsable) {
           header = utils.cloneWithProps(header, {
             className: 'panel-title',
             children: this.renderAnchor(header.props.children)
@@ -4606,7 +4819,7 @@ define(
         return (
           React.DOM.a(
             {href:'#' + (this.props.id || ''),
-            className:this.isOpen() ? null : 'collapsed',
+            className:this.isExpanded() ? null : 'collapsed',
             onClick:this.handleSelect}, 
             header
           )
@@ -4615,8 +4828,15 @@ define(
 
       renderCollapsableTitle: function (header) {
         return (
-          React.DOM.h4( {className:"panel-title"}, 
-            this.renderAnchor(header)
+          React.DOM.a(
+            {href:'#' + (this.props.id || ''),
+            className:this.isOpen() ? null : 'collapsed',
+            onClick:this.handleSelect}, 
+            React.DOM.div( {className:"accordion-toggle-icon"}, 
+              React.DOM.i( {className:"fa fa-minus-square-o"} ),
+              React.DOM.i( {className:"fa fa-plus-square-o"} )
+            ),
+            header
           )
         );
       },
@@ -4711,8 +4931,8 @@ define('Popover',['./transpiled/Popover'], function (Popover) {
   return Popover['default'];
 });
 define(
-  'transpiled/ProgressBar',["./react-es6","./react-es6/lib/cx","./Interpolate","./BootstrapMixin","./utils","exports"],
-  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __dependency5__, __exports__) {
+  'transpiled/ProgressBar',["./react-es6","./react-es6/lib/cx","./Interpolate","./BootstrapMixin","./utils","./ValidComponentChildren","exports"],
+  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __dependency5__, __dependency6__, __exports__) {
     
     /** @jsx React.DOM */
 
@@ -4721,6 +4941,7 @@ define(
     var Interpolate = __dependency3__["default"];
     var BootstrapMixin = __dependency4__["default"];
     var utils = __dependency5__["default"];
+    var ValidComponentChildren = __dependency6__["default"];
 
 
     var ProgressBar = React.createClass({displayName: 'ProgressBar',
@@ -4760,7 +4981,7 @@ define(
           classes['progress-striped'] = true;
         }
 
-        if (!this.props.children) {
+        if (!ValidComponentChildren.hasValidComponent(this.props.children)) {
           if (!this.props.isChild) {
             return this.transferPropsTo(
               React.DOM.div( {className:classSet(classes)}, 
@@ -4775,7 +4996,7 @@ define(
         } else {
           return this.transferPropsTo(
             React.DOM.div( {className:classSet(classes)}, 
-              utils.modifyChildren(this.props.children, this.renderChildBar)
+              ValidComponentChildren.map(this.props.children, this.renderChildBar)
             )
           );
         }
@@ -4903,7 +5124,8 @@ define(
         href:          React.PropTypes.string,
         dropdownTitle: React.PropTypes.renderable,
         onClick:       React.PropTypes.func,
-        onSelect:      React.PropTypes.func
+        onSelect:      React.PropTypes.func,
+        disabled:      React.PropTypes.bool
       },
 
       getDefaultProps: function () {
@@ -4918,28 +5140,35 @@ define(
             'dropup': this.props.dropup
           };
 
+        var button = this.transferPropsTo(
+          Button(
+            {ref:"button",
+            onClick:this.handleButtonClick,
+            title:null,
+            id:null}, 
+            this.props.title
+          )
+        );
+
+        var dropdownButton = this.transferPropsTo(
+          Button(
+            {ref:"dropdownButton",
+            className:"dropdown-toggle",
+            onClick:this.handleDropdownClick,
+            title:null,
+            id:null}, 
+            React.DOM.span( {className:"sr-only"}, this.props.dropdownTitle),
+            React.DOM.span( {className:"caret"} )
+          )
+        );
+
         return (
           ButtonGroup(
             {bsSize:this.props.bsSize,
             className:classSet(groupClasses),
             id:this.props.id}, 
-            Button(
-              {ref:"button",
-              href:this.props.href,
-              bsStyle:this.props.bsStyle,
-              onClick:this.handleButtonClick}, 
-              this.props.title
-            ),
-
-            Button(
-              {ref:"dropdownButton",
-              bsStyle:this.props.bsStyle,
-              className:"dropdown-toggle",
-              onClick:this.handleDropdownClick}, 
-              React.DOM.span( {className:"sr-only"}, this.props.dropdownTitle),
-              React.DOM.span( {className:"caret"} )
-            ),
-
+            button,
+            dropdownButton,
             DropdownMenu(
               {ref:"menu",
               onSelect:this.handleOptionSelect,
@@ -4982,8 +5211,8 @@ define('SplitButton',['./transpiled/SplitButton'], function (SplitButton) {
   return SplitButton['default'];
 });
 define(
-  'transpiled/SubNav',["./react-es6","./react-es6/lib/cx","./BootstrapMixin","./utils","exports"],
-  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __exports__) {
+  'transpiled/SubNav',["./react-es6","./react-es6/lib/cx","./BootstrapMixin","./utils","./ValidComponentChildren","exports"],
+  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __dependency5__, __exports__) {
     
     /** @jsx React.DOM */
 
@@ -4991,6 +5220,7 @@ define(
     var classSet = __dependency2__["default"];
     var BootstrapMixin = __dependency3__["default"];
     var utils = __dependency4__["default"];
+    var ValidComponentChildren = __dependency5__["default"];
 
 
     var SubNav = React.createClass({displayName: 'SubNav',
@@ -5026,8 +5256,6 @@ define(
       },
 
       isChildActive: function (child) {
-        var isActive = false;
-
         if (child.props.active) {
           return true;
         }
@@ -5041,7 +5269,9 @@ define(
         }
 
         if (child.props.children) {
-          React.Children.forEach(
+          var isActive = false;
+
+          ValidComponentChildren.forEach(
             child.props.children,
             function (child) {
               if (this.isChildActive(child)) {
@@ -5091,7 +5321,7 @@ define(
               this.props.text
             ),
             React.DOM.ul( {className:"nav"}, 
-              utils.modifyChildren(this.props.children, this.renderNavItem)
+              ValidComponentChildren.map(this.props.children, this.renderNavItem)
             )
           )
         );
@@ -5116,8 +5346,8 @@ define('SubNav',['./transpiled/SubNav'], function (SubNav) {
   return SubNav['default'];
 });
 define(
-  'transpiled/TabbedArea',["./react-es6","./BootstrapMixin","./utils","./Nav","./NavItem","exports"],
-  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __dependency5__, __exports__) {
+  'transpiled/TabbedArea',["./react-es6","./BootstrapMixin","./utils","./Nav","./NavItem","./ValidComponentChildren","exports"],
+  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __dependency5__, __dependency6__, __exports__) {
     
     /** @jsx React.DOM */
 
@@ -5126,9 +5356,18 @@ define(
     var utils = __dependency3__["default"];
     var Nav = __dependency4__["default"];
     var NavItem = __dependency5__["default"];
+    var ValidComponentChildren = __dependency6__["default"];
 
-    function hasTab (child) {
-      return !!child.props.tab;
+    function getDefaultActiveKeyFromChildren(children) {
+      var defaultActiveKey;
+
+      ValidComponentChildren.forEach(children, function(child) {
+        if (defaultActiveKey == null) {
+          defaultActiveKey = child.props.key;
+        }
+      });
+
+      return defaultActiveKey;
     }
 
     var TabbedArea = React.createClass({displayName: 'TabbedArea',
@@ -5136,23 +5375,23 @@ define(
 
       propTypes: {
         animation: React.PropTypes.bool,
+        panel: React.PropTypes.bool,
         onSelect: React.PropTypes.func
       },
 
       getDefaultProps: function () {
         return {
-          animation: true
+          animation: true,
+          panel: false
         };
       },
 
       getInitialState: function () {
-        var defaultActiveKey = this.props.defaultActiveKey;
+        var defaultActiveKey = this.props.defaultActiveKey != null ?
+          this.props.defaultActiveKey : getDefaultActiveKeyFromChildren(this.props.children);
 
-        if (defaultActiveKey == null) {
-          var children = this.props.children;
-          defaultActiveKey =
-            Array.isArray(children) ? children[0].props.key : children.props.key;
-        }
+        // TODO: In __DEV__ mode warn via `console.warn` if no `defaultActiveKey` has
+        // been set by this point, invalid children or missing key properties are likely the cause.
 
         return {
           activeKey: defaultActiveKey,
@@ -5178,17 +5417,23 @@ define(
         var activeKey =
           this.props.activeKey != null ? this.props.activeKey : this.state.activeKey;
 
+        function renderTabIfSet(child) {
+          return child.props.tab != null ? this.renderTab(child) : null;
+        }
+
         var nav = this.transferPropsTo(
-          Nav( {bsStyle:"tabs", activeKey:activeKey, onSelect:this.handleSelect, ref:"tabs"}, 
-              utils.modifyChildren(utils.filterChildren(this.props.children, hasTab), this.renderTab)
+          Nav( {bsStyle:this.props.panel ? '' : 'tabs', activeKey:activeKey, onSelect:this.handleSelect, ref:"tabs", panel:this.props.panel}, 
+            ValidComponentChildren.map(this.props.children, renderTabIfSet, this)
           )
         );
 
         return (
-          React.DOM.div(null, 
-            nav,
+          React.DOM.div( {className:"panel"}, 
+            React.DOM.div( {className:"panel-heading"}, 
+              nav
+            ),
             React.DOM.div( {id:this.props.id, className:"tab-content", ref:"panes"}, 
-              utils.modifyChildren(this.props.children, this.renderPane)
+              ValidComponentChildren.map(this.props.children, this.renderPane)
             )
           )
         );
