@@ -128,7 +128,7 @@ define(
         return (
           React.DOM.a(
             {href:'#' + (this.props.id || ''),
-            className:this.isOpen() ? null : 'collapsed',
+            className:this.isExpanded() ? null : 'collapsed',
             onClick:this.handleSelect}, 
             React.DOM.div( {className:"accordion-toggle-icon"}, 
               React.DOM.i( {className:"fa fa-minus-square-o"} ),
