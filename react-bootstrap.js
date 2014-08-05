@@ -4951,7 +4951,8 @@ var TabbedArea = React.createClass({displayName: 'TabbedArea',
   getDefaultProps: function () {
     return {
       animation: true,
-      panel: false
+      panel: false,
+      bsStyle: "tabs"
     };
   },
 
