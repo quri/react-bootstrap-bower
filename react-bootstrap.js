@@ -1003,7 +1003,7 @@ var PanelGroup = React.createClass({displayName: 'PanelGroup',
     classes['accordion-alt'] = this.props.accordion;
 
     return this.transferPropsTo(
-      React.DOM.div( {className:classSet(this.getBsClassSet()), onSelect:null}, 
+      React.DOM.div( {className:classSet(classes), onSelect:null, onSelect:null}, 
         ValidComponentChildren.map(this.props.children, this.renderPanel)
       )
     );
